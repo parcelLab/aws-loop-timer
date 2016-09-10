@@ -11,10 +11,10 @@ var namespace = 'empty';
 // Prototype //
 ///////////////
 
-function Timer(name, pulse) {
+function Timer(name, pulse, isSilent) {
 
   // validate
-  if (!(this instanceof Timer)) return new Timer('unnamed', 0);
+  if (!(this instanceof Timer)) return new Timer('unnamed');
   if (!_.isString(name)) return console.error('Name must be a string');
   if (_.isUndefined(pulse)) pulse = 0;
   if (!_.isNumber(pulse) || _.isNaN(pulse) || pulse < 0)
@@ -23,6 +23,7 @@ function Timer(name, pulse) {
   // set
   this.name = name;
   this.pulse = pulse;
+  this.isSilent = isSilent;
 
   // init
   this.startDate = null;
@@ -104,7 +105,7 @@ Timer.prototype.pushPulseToCloudWatch = function () {
 
     // inform
     if (!_.isNaN(averageCycletime)) {
-      print(_this.name, averageCycletime, true);
+      if (!this.isSilent) print(_this.name, averageCycletime, true);
       uploadMetricToCloudWatch(_this.name, averageCycletime);
     }
 
@@ -125,13 +126,16 @@ Timer.prototype.pushPulseToCloudWatch = function () {
  * returns a timer object
  * @param  {String} name  the name of the timer
  * @param  {Number} pulse the pulse in seconds, is optional
- * @return {[type]}       [description]
+ * @param  {Boolean} silent whether the timer should write to the log
+ *                          (default false, any truthy value works)
+ * @return {Object}         a timer
  */
-function getTimer(name, pulse) {
+function getTimer(name, pulse, silent) {
 
   if (_.isUndefined(pulse)) pulse = 0;
+  var writeResultsToLog = _.isUndefined(silent) || silent === false;
 
-  var timer = new Timer(name, pulse);
+  var timer = new Timer(name, pulse, !writeResultsToLog);
   if (timer.pulse > 0) timer.pushPulseToCloudWatch();
   return timer;
 
@@ -164,7 +168,7 @@ Timer.prototype.end = function () {
   }
 
   // inform
-  print(this.name, cycletime, false);
+  if (!this.isSilent) print(this.name, cycletime, false);
   return cycletime;
 };
 
